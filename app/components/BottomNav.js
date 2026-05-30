@@ -1,39 +1,42 @@
 'use client';
 
-export default function BottomNav({ activeTab, setActiveTab }) {
-  const tabs = [
-    { id: 'leaderboard', label: 'Leaderboard', icon: 'leaderboard' },
-    { id: 'log-game', label: 'Log Game', icon: 'add_circle' },
-    { id: 'history', label: 'History', icon: 'history' },
-    { id: 'profile', label: 'Profile', icon: 'person' }
-  ];
+import { TABS } from './DesktopSidebar';
 
+export default function BottomNav({ activeTab, setActiveTab }) {
   return (
-    <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pt-2 pb-6 bg-surface-container-lowest shadow-[0_-4px_12px_0_rgba(79,70,229,0.08)] rounded-t-xl z-50 transition-all border-t border-outline-variant/10">
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-col items-center justify-center transition-all duration-300 tap-interaction px-4 py-1.5 rounded-xl cursor-pointer ${
-              isActive
-                ? 'bg-primary-container text-on-primary-container font-semibold shadow-sm'
-                : 'text-on-surface-variant hover:bg-surface-container-high'
-            }`}
-          >
-            <span
-              className="material-symbols-outlined text-[24px]"
-              style={{
-                fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
-              }}
+    <nav className="lg:hidden fixed bottom-0 left-0 w-full z-50 px-4 pb-6 pt-2 bg-gradient-to-t from-background via-background/95 to-transparent">
+      <div className="max-w-md mx-auto flex justify-around items-end bg-surface-container-lowest/95 backdrop-blur-md rounded-2xl px-2 py-2 card-shadow border border-outline-variant/20">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] py-1.5 px-2 rounded-xl transition-all duration-200 tap-interaction cursor-pointer ${
+                isActive ? '' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
             >
-              {tab.icon}
-            </span>
-            <span className="font-label-sm text-[12px] mt-0.5">{tab.label}</span>
-          </button>
-        );
-      })}
+              <span
+                className={`flex items-center justify-center w-[52px] h-8 rounded-full transition-all ${
+                  isActive ? 'bg-primary text-white' : ''
+                }`}
+              >
+                <span
+                  className="material-symbols-outlined text-[22px]"
+                  style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  {tab.icon}
+                </span>
+              </span>
+              <span className={`text-[11px] font-semibold ${isActive ? 'text-primary' : ''}`}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

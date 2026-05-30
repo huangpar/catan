@@ -9,6 +9,7 @@ CREATE TABLE players (
     name VARCHAR(100) NOT NULL UNIQUE,
     nickname VARCHAR(100),
     avatar_url TEXT NOT NULL,
+    color VARCHAR(30) NOT NULL DEFAULT '#64748B',
     streak INT DEFAULT 0,
     total_victories_all_time INT DEFAULT 0
 );
@@ -34,7 +35,7 @@ CREATE TABLE match_participants (
 
 -- Seed players
 INSERT INTO players (name, nickname, avatar_url, streak, total_victories_all_time) VALUES
-('Alex Thorne', 'Season Leader', 'https://lh3.googleusercontent.com/aida-public/AB6AXuDsOU_lHyClZDF6ik6dEGuVpHHLSVpYCPOfPKW9MrnBaeMkQLhn0U4L7dSbCnKA4wR5Z69I0Zy4Qpvhu41x9BMeqMewN0Va8DdxBGR2fo3IeV6LzJ7Rg6P6JIfkNrILzgF6UEtju3YrOIXeiJDfJqUAz2VhWMO3fa98lGBU07Aj8OWoVVNfmA995VJQSYBDg02NjlciA8HR4UhcqCJ0QBjl9X2bsWrRixIYsVnodyHilLckO2pjwYf2j-hPXHIoVDsr0lQlXhwtEa0', 5, 42),
+('Alex Thorne', 'Table Leader', 'https://lh3.googleusercontent.com/aida-public/AB6AXuDsOU_lHyClZDF6ik6dEGuVpHHLSVpYCPOfPKW9MrnBaeMkQLhn0U4L7dSbCnKA4wR5Z69I0Zy4Qpvhu41x9BMeqMewN0Va8DdxBGR2fo3IeV6LzJ7Rg6P6JIfkNrILzgF6UEtju3YrOIXeiJDfJqUAz2VhWMO3fa98lGBU07Aj8OWoVVNfmA995VJQSYBDg02NjlciA8HR4UhcqCJ0QBjl9X2bsWrRixIYsVnodyHilLckO2pjwYf2j-hPXHIoVDsr0lQlXhwtEa0', 5, 42),
 ('Jordan Rivers', 'The Challenger', 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQOM7tGsSDFPUOUelro2PBhldNFA0zrHrmI2G5nIC2Vv1SQBCVHCq_w6BZ-5KU1hWlfhYsiN-qQM62wvOitYHikpycQeNLNSFByAYWRT3i5lqh8iDvLd0Y0VyF_c3eOlqJEJR7qDvqBBucRCIh_SJ5PMV_JAo7EyLc23GdJQ835jYeUJV_z0lmVSwMBMt2H5LiCTs9828nx_MQFtEv_cgUwKsIuFua5Rmf72a-NGgeFqGW4Bx7zil1PpCtVw8itnJUJK2tEqCvC88', 2, 38),
 ('Casey Morgan', 'The Tactician', 'https://lh3.googleusercontent.com/aida-public/AB6AXuAfFFkZmRDwb78MJp7WrO7aTytCUAKf7tp4YLa03arbfDUmF22HwMApxU0SkoDnTr_GW6JYaiPz39BYI-j1ifSAe_yu5Op4QZ3ppzYFpTCsN2TxK1v6bY77-gR4RfFc_Dc9H4mU7dvnjzttVqhMEoJVU62fEL13rGTQv1n6qTZctTXmutLhSFaUKGJMkIHRG1uAbn9zJgv7rgUpPRRBeKBYLzKhoheBPxhxzTS6TgUOHRCWDbROTwaxo7VG7OxestzONgUlX2wuFVA', 3, 35),
 ('Riley Smith', 'Scythe Pro', 'https://lh3.googleusercontent.com/aida-public/AB6AXuA27_R3uwyUUxxVIz_Z98ur_7PQP8lNuBIfi6YxLkKjw-hCay5VFc1gR1yENmDa4wf2UFfx-uxBmqufD6X3XJBFTuytyqyXTOEH7X2iTP_vXtRv1SGSU8RyDThkrbu_5tU26yDmFoFaGjzCeF39zD8cqj08k083zUk1CEQE9T6BK_eRehl2zzjKRN-TcGjJEfAvVK2vHuAorjfPxFxx3bWcdGfITDGrtHOMNZeQPJfDv62TiVcfkqJXvYRkHrc6snI5oK6DyJtcgmY', 0, 29),
@@ -73,8 +74,7 @@ INSERT INTO match_participants (match_id, player_id, score, is_winner) VALUES
 (3, 7, 8, FALSE), -- Alex Rivera
 (3, 9, 7, FALSE); -- Marcus Todd
 
--- Seed some historical victories for Alex Thorne, Jordan Rivers, Casey Morgan to support their leaderboard counts
--- We will seed a few matches for them, but we will also let the app query return the total_victories_all_time plus season wins from matches to be robust!
+-- Seed historical victories for Alex Thorne, Jordan Rivers, Casey Morgan alongside logged match wins
 INSERT INTO matches (id, game_name, notes, league, duration_minutes) VALUES
 (4, 'Scythe', 'High tier gameplay', 'Standard', 120),
 (5, 'Root', 'Woodland alliance wins', 'Standard', 90),

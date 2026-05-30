@@ -3,13 +3,42 @@
 import pool, { query } from '@/lib/db';
 import { initDatabase } from '@/lib/initDb';
 
+const DEFAULT_PLAYER_COLOR = '#64748B';
+const PLAYER_COLOR_PALETTE = [
+  '#EF4444',
+  '#4338CA',
+  '#0F766E',
+  '#D97706',
+  '#10B981',
+  '#C026D3',
+  '#2563EB',
+  '#F97316',
+  '#22C55E',
+  '#E11D48',
+  '#0EA5E9',
+];
+
+function derivePlayerColor(name = '') {
+  const normalized = String(name).trim().toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash = (hash * 31 + normalized.charCodeAt(i)) >>> 0;
+  }
+  return PLAYER_COLOR_PALETTE[hash % PLAYER_COLOR_PALETTE.length];
+}
+
+function getPlayerColor(color, name) {
+  if (color && color !== DEFAULT_PLAYER_COLOR) return color;
+  return derivePlayerColor(name);
+}
+
 // Utility to ensure database is set up before any action runs
 async function ensureDb() {
   await initDatabase();
 }
 
 /**
- * Fetches all players ranked by total wins (season wins from matches + all-time wins).
+ * Fetches all players ranked by total wins (logged match wins + all-time wins).
  */
 export async function getLeaderboard() {
   await ensureDb();
@@ -20,9 +49,10 @@ export async function getLeaderboard() {
         p.name, 
         p.nickname, 
         p.avatar_url, 
+        p.color,
         p.streak,
         p.total_victories_all_time,
-        COALESCE(COUNT(CASE WHEN mp.is_winner = TRUE THEN 1 END), 0) AS season_wins,
+        COALESCE(COUNT(CASE WHEN mp.is_winner = TRUE THEN 1 END), 0) AS match_wins,
         (p.total_victories_all_time + COALESCE(COUNT(CASE WHEN mp.is_winner = TRUE THEN 1 END), 0)) AS wins,
         COALESCE(
           (SELECT game_name FROM matches m 
@@ -37,7 +67,10 @@ export async function getLeaderboard() {
       ORDER BY wins DESC, p.name ASC;
     `;
     const res = await query(sql);
-    return res.rows;
+    return res.rows.map((player) => ({
+      ...player,
+      color: getPlayerColor(player.color, player.name),
+    }));
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     return [];
@@ -61,12 +94,12 @@ export async function getHistory() {
         p.id AS player_id,
         p.name AS player_name,
         p.avatar_url AS player_avatar,
-        mp.score,
+        p.color AS player_color,
         mp.is_winner
       FROM matches m
       JOIN match_participants mp ON m.id = mp.match_id
       JOIN players p ON mp.player_id = p.id
-      ORDER BY m.played_at DESC, mp.score DESC;
+      ORDER BY m.played_at DESC, mp.is_winner DESC, p.name ASC;
     `;
     const res = await query(sql);
     
@@ -89,7 +122,7 @@ export async function getHistory() {
         id: row.player_id,
         name: row.player_name,
         avatar: row.player_avatar,
-        score: row.score,
+        color: getPlayerColor(row.player_color, row.player_name),
         isWinner: row.is_winner
       });
     });
@@ -104,7 +137,7 @@ export async function getHistory() {
 /**
  * Logs a new match and updates player win streaks.
  * @param {string} gameName Name of the game (e.g. Catan)
- * @param {Array<{playerId: number, score: number, isWinner: boolean}>} participants Participant details
+ * @param {Array<{playerId: number, isWinner: boolean}>} participants Participant details
  * @param {number} duration Match duration in minutes
  * @param {string} notes Optional match notes
  * @param {string} league Optional league category
@@ -131,7 +164,7 @@ export async function logMatch(gameName, participants, duration = 60, notes = ''
     `;
     
     for (const p of participants) {
-      await client.query(insertParticipantSql, [matchId, p.playerId, p.score, p.isWinner]);
+      await client.query(insertParticipantSql, [matchId, p.playerId, 0, p.isWinner]);
       
       // 3. Update player streaks and total wins (if needed)
       if (p.isWinner) {
@@ -173,6 +206,7 @@ export async function getPlayerProfile(playerId) {
         p.name, 
         p.nickname, 
         p.avatar_url, 
+        p.color,
         p.streak,
         p.total_victories_all_time,
         (p.total_victories_all_time + COALESCE((
@@ -197,6 +231,7 @@ export async function getPlayerProfile(playerId) {
     if (playerRes.rows.length === 0) return null;
     
     const player = playerRes.rows[0];
+    player.color = getPlayerColor(player.color, player.name);
 
     // 2. Fetch total matches played
     const totalPlayedSql = `
@@ -230,7 +265,6 @@ export async function getPlayerProfile(playerId) {
         m.notes,
         m.league,
         m.duration_minutes,
-        mp.score,
         mp.is_winner,
         (
           SELECT ARRAY_TO_STRING(ARRAY_AGG(p2.name), ', ') 
@@ -246,13 +280,15 @@ export async function getPlayerProfile(playerId) {
     `;
     const timelineRes = await query(timelineSql, [id]);
 
-    const winRatio = totalPlayed > 0 ? Math.round((player.season_wins || (player.wins - player.total_victories_all_time)) / totalPlayed * 100) : 0;
-    // Fallback: If no matches are played but wins exist in seed all-time data, approximate a realistic win ratio
-    const actualWinRatio = totalPlayed > 0 ? Math.round(((player.wins - player.total_victories_all_time) + (player.total_victories_all_time * 0.3)) / (totalPlayed + player.total_victories_all_time) * 100) : 45;
+    const matchWins = parseInt(player.wins, 10) - parseInt(player.total_victories_all_time || 0, 10);
+    const actualWinRatio = totalPlayed > 0
+      ? Math.round((matchWins / totalPlayed) * 100)
+      : player.total_victories_all_time > 0 ? 45 : 0;
 
     return {
       ...player,
-      totalPlayed: totalPlayed + player.total_victories_all_time,
+      match_wins: matchWins,
+      totalPlayed: totalPlayed + parseInt(player.total_victories_all_time || 0, 10),
       winRatio: Math.min(100, Math.max(0, actualWinRatio)),
       bestGame,
       timeline: timelineRes.rows.map(row => ({
@@ -262,7 +298,6 @@ export async function getPlayerProfile(playerId) {
         notes: row.notes,
         league: row.league,
         duration: row.duration_minutes,
-        score: row.score,
         isWinner: row.is_winner,
         opponents: row.opponents
       }))
@@ -279,10 +314,60 @@ export async function getPlayerProfile(playerId) {
 export async function getPlayersList() {
   await ensureDb();
   try {
-    const res = await query('SELECT id, name, avatar_url FROM players ORDER BY name ASC;');
-    return res.rows;
+    const res = await query('SELECT id, name, avatar_url, color FROM players ORDER BY name ASC;');
+    return res.rows.map((player) => ({
+      ...player,
+      color: getPlayerColor(player.color, player.name),
+    }));
   } catch (error) {
     console.error('Error fetching players list:', error);
     return [];
+  }
+}
+
+export async function createPlayer(name, nickname = '', avatarUrl = '', color = '') {
+  await ensureDb();
+  const trimmedName = String(name || '').trim();
+  if (!trimmedName) {
+    return { success: false, error: 'Player name is required.' };
+  }
+
+  const defaultAvatar = avatarUrl || `https://images.dicebear.com/api/identicon/${encodeURIComponent(trimmedName)}.svg`;
+  const playerColor = color || getPlayerColor('', trimmedName);
+
+  try {
+    const res = await query(
+      `INSERT INTO players (name, nickname, avatar_url, color) VALUES ($1, $2, $3, $4) RETURNING id;`,
+      [trimmedName, nickname || null, defaultAvatar, playerColor]
+    );
+    return { success: true, playerId: res.rows[0].id };
+  } catch (error) {
+    console.error('Error creating player:', error);
+    return { success: false, error: error.message || 'Unable to create player.' };
+  }
+}
+
+export async function deletePlayer(playerId) {
+  await ensureDb();
+  const id = parseInt(playerId, 10);
+  if (!id) {
+    return { success: false, error: 'Invalid player id.' };
+  }
+
+  try {
+    const countRes = await query('SELECT COUNT(*) AS count FROM match_participants WHERE player_id = $1;', [id]);
+    const count = parseInt(countRes.rows[0]?.count || 0, 10);
+    if (count > 0) {
+      return { success: false, error: 'Players with logged matches cannot be removed.' };
+    }
+
+    const deleteRes = await query('DELETE FROM players WHERE id = $1 RETURNING id;', [id]);
+    if (deleteRes.rowCount === 0) {
+      return { success: false, error: 'Player not found.' };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting player:', error);
+    return { success: false, error: error.message || 'Unable to delete player.' };
   }
 }

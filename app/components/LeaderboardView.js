@@ -34,7 +34,20 @@ export default function LeaderboardView({
 
   const totalGames = history.length;
 
-  const recentWins = history.slice(0, isDesktop ? 5 : 2).map((match) => {
+  const sortedHistory = history.slice().sort((a, b) => {
+    const ta = new Date(a.playedAt).getTime();
+    const tb = new Date(b.playedAt).getTime();
+
+    if (ta === tb) return b.id - a.id;
+
+    const dayA = new Date(a.playedAt).toISOString().slice(0, 10);
+    const dayB = new Date(b.playedAt).toISOString().slice(0, 10);
+    if (dayA === dayB) return b.id - a.id;
+
+    return tb - ta;
+  });
+
+  const recentWins = sortedHistory.slice(0, isDesktop ? 5 : 2).map((match) => {
     const winner = match.participants.find((p) => p.isWinner);
     return {
       id: match.id,
@@ -131,7 +144,7 @@ export default function LeaderboardView({
               </div>
 
               <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:gap-8 items-center text-center lg:text-left">
-                <div className="relative shrink-0">
+                <div className="relative shrink-0 mb-2">
                   <PlayerAvatar
                     name={topPlayer.name}
                     src={topPlayer.avatar_url}
@@ -152,7 +165,7 @@ export default function LeaderboardView({
                     <h2 className="font-serif text-[26px] lg:text-[32px] leading-none">{topPlayer.name}</h2>
                   </div>
 
-                  <div className="flex flex-wrap justify-center lg:justify-start gap-2">
+                  {/* <div className="flex flex-wrap justify-center lg:justify-start gap-2">
                     {['Longest Road', 'Largest Army'].map((badge) => (
                       <span
                         key={badge}
@@ -164,7 +177,7 @@ export default function LeaderboardView({
                         {badge}
                       </span>
                     ))}
-                  </div>
+                  </div> */}
 
                   <div>
                     <p className="text-[32px] lg:text-[40px] font-bold leading-none tracking-tight">

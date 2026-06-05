@@ -14,7 +14,7 @@ const dmSerif = DM_Serif_Display({
 });
 
 export const metadata = {
-  title: "VictoryVault - Board Game Win Tracker",
+  title: "CatanLog",
   description: "Track your board game sessions, log matches, and view real-time rankings and player streaks on the ultimate win tracker.",
 };
 

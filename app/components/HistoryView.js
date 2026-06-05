@@ -61,7 +61,7 @@ function MatchCard({ match, onSelectPlayer }) {
         </span>
       </div>
 
-      <h3 className="font-serif text-[22px] text-on-surface mb-3 relative">{match.gameName}</h3>
+      {/* <h3 className="font-serif text-[22px] text-on-surface mb-3 relative">{match.gameName}</h3> */}
 
       {winner ? (
         <button
@@ -91,7 +91,7 @@ function MatchCard({ match, onSelectPlayer }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-4 relative">
+      {/* <div className="grid grid-cols-2 gap-3 mb-4 relative">
         <div className="bg-surface-container rounded-xl p-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">
             Duration
@@ -104,7 +104,7 @@ function MatchCard({ match, onSelectPlayer }) {
           </p>
           <p className="text-on-surface font-bold text-[18px]">{match.participants.length}</p>
         </div>
-      </div>
+      </div> */}
 
       <div className="flex items-center justify-between pt-3 border-t border-outline-variant/30 relative mt-auto">
         <div className="flex -space-x-2">
@@ -177,8 +177,23 @@ export default function HistoryView({
   }, [history]);
 
   const filteredHistory = useMemo(() => {
-    if (gameFilter === 'all') return history;
-    return history.filter((m) => m.gameName === gameFilter);
+    const list = gameFilter === 'all' ? history.slice() : history.filter((m) => m.gameName === gameFilter);
+
+    // Sort: most recent playedAt first. If two matches are on the same calendar date,
+    // use the game id (match.id) as a tiebreaker (higher id first).
+    return list.sort((a, b) => {
+      const ta = new Date(a.playedAt).getTime();
+      const tb = new Date(b.playedAt).getTime();
+
+      if (ta === tb) return b.id - a.id;
+
+      // If dates fall on the same calendar day, prefer the higher id as tiebreaker
+      const dayA = new Date(a.playedAt).toISOString().slice(0, 10);
+      const dayB = new Date(b.playedAt).toISOString().slice(0, 10);
+      if (dayA === dayB) return b.id - a.id;
+
+      return tb - ta;
+    });
   }, [history, gameFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize));

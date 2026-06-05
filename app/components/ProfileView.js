@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPlayerProfile, getPlayersList } from '../actions/gameActions';
+import { getPlayerProfile, getPlayersList, updatePlayerAvatar } from '../actions/gameActions';
 import PlayerAvatar from './PlayerAvatar';
 import DesktopPageHeader from './DesktopPageHeader';
 
@@ -38,6 +38,10 @@ export default function ProfileView({ playerId, onBack }) {
   useEffect(() => {
     if (playerId) setSelectedPlayerId(playerId);
   }, [playerId]);
+
+  const [editingAvatar, setEditingAvatar] = useState(false);
+  const [avatarInput, setAvatarInput] = useState('');
+  const [savingAvatar, setSavingAvatar] = useState(false);
 
 
   const formatDate = (isoString) => {
@@ -102,10 +106,68 @@ export default function ProfileView({ playerId, onBack }) {
             size="lg"
             className="w-[100px] h-[100px] lg:w-[120px] lg:h-[120px] border-[3px] border-gold-light"
           />
+          <button
+            type="button"
+            onClick={() => {
+              setAvatarInput(profile.avatar_url || `https://images.dicebear.com/api/identicon/${encodeURIComponent(profile.name)}.svg`);
+              setEditingAvatar(true);
+            }}
+            className="absolute -right-2 -top-2 bg-white/90 text-sm px-2 py-1 rounded-full shadow border cursor-pointer z-10"
+            aria-label="Edit avatar"
+          >
+            Edit
+          </button>
           <div className="absolute -bottom-1 -right-1 bg-primary text-white px-2.5 py-0.5 rounded-full text-[11px] font-bold border-2 border-white shadow">
             #{profile.rank}
           </div>
         </div>
+
+        {editingAvatar && (
+          <div className="w-full mt-2">
+            <label className="text-[12px] font-semibold">Avatar URL</label>
+            <div className="flex gap-2 mt-2">
+              <input
+                value={avatarInput}
+                onChange={(e) => setAvatarInput(e.target.value)}
+                className="flex-1 rounded-xl px-3 py-2 border border-outline-variant/30 bg-surface-container text-on-surface text-sm"
+                placeholder="https://..."
+              />
+              <button
+                type="button"
+                disabled={savingAvatar}
+                onClick={async () => {
+                  try {
+                    setSavingAvatar(true);
+                    const res = await updatePlayerAvatar(selectedPlayerId, avatarInput);
+                    if (res?.success) {
+                      const updated = await getPlayerProfile(selectedPlayerId);
+                      setProfile(updated);
+                      setEditingAvatar(false);
+                    } else {
+                      // eslint-disable-next-line no-alert
+                      alert(res?.error || 'Unable to save avatar');
+                    }
+                  } catch (err) {
+                    // eslint-disable-next-line no-alert
+                    alert('Error saving avatar');
+                  } finally {
+                    setSavingAvatar(false);
+                  }
+                }}
+                className="px-3 py-2 rounded-xl bg-primary text-white font-semibold"
+              >
+                {savingAvatar ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingAvatar(false)}
+                className="px-3 py-2 rounded-xl border border-outline-variant/30 bg-surface-container text-on-surface font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         <p className="text-gold text-[10px] font-bold uppercase tracking-[0.18em] mb-1">
           {profile.nickname || 'Board Game Champion'}

@@ -347,6 +347,31 @@ export async function createPlayer(name, nickname = '', avatarUrl = '', color = 
   }
 }
 
+/**
+ * Updates a player's avatar URL.
+ * @param {number|string} playerId
+ * @param {string} avatarUrl
+ */
+export async function updatePlayerAvatar(playerId, avatarUrl) {
+  await ensureDb();
+  const id = parseInt(playerId, 10);
+  if (!id) return { success: false, error: 'Invalid player id.' };
+  const trimmed = String(avatarUrl || '').trim();
+  if (!trimmed) return { success: false, error: 'Avatar URL is required.' };
+
+  try {
+    const res = await query(
+      `UPDATE players SET avatar_url = $1 WHERE id = $2 RETURNING id, avatar_url;`,
+      [trimmed, id]
+    );
+    if (res.rowCount === 0) return { success: false, error: 'Player not found.' };
+    return { success: true, avatarUrl: res.rows[0].avatar_url };
+  } catch (error) {
+    console.error('Error updating avatar:', error);
+    return { success: false, error: error.message || 'Unable to update avatar.' };
+  }
+}
+
 export async function deletePlayer(playerId) {
   await ensureDb();
   const id = parseInt(playerId, 10);

@@ -93,7 +93,6 @@ export async function getHistory() {
         m.duration_minutes,
         p.id AS player_id,
         p.name AS player_name,
-        p.avatar_url AS player_avatar,
         p.color AS player_color,
         mp.is_winner
       FROM matches m
@@ -121,7 +120,6 @@ export async function getHistory() {
       matchesMap.get(row.match_id).participants.push({
         id: row.player_id,
         name: row.player_name,
-        avatar: row.player_avatar,
         color: getPlayerColor(row.player_color, row.player_name),
         isWinner: row.is_winner
       });

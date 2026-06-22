@@ -32,8 +32,17 @@ export default function Home() {
         getPlayersList(),
       ]);
 
+      const playersMap = new Map(players.map(p => [p.id, p.avatar_url]));
+      const enrichedMatches = matches.map(m => ({
+        ...m,
+        participants: m.participants.map(p => ({
+          ...p,
+          avatar: playersMap.get(p.id) || p.avatar
+        }))
+      }));
+
       setLeaderboard(ranks);
-      setHistory(matches);
+      setHistory(enrichedMatches);
       setPlayersList(players);
 
       const validIds = players.map((player) => player.id);

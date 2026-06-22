@@ -42,22 +42,51 @@ export default function ProfileView({ playerId, onBack }) {
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [avatarInput, setAvatarInput] = useState('');
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [processingImage, setProcessingImage] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (e.g., limit to 2MB) to prevent database overload
-      if (file.size > 2 * 1024 * 1024) {
-        alert('File size must be less than 2MB');
+  const handleFileChange = async (e) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (e.g., limit to 2MB) to prevent database overload
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB');
+      return;
+    }
+
+    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+
+    if (isHeic) {
+      try {
+        setProcessingImage(true);
+        // Dynamically import to avoid SSR issues
+        const heic2any = (await import('heic2any')).default;
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.8
+        });
+        file = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+      } catch (err) {
+        console.error('Failed to convert HEIC to JPEG', err);
+        alert('Failed to process HEIC image. Please try another format.');
+        setProcessingImage(false);
         return;
+      } finally {
+        setProcessingImage(false);
       }
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setAvatarInput(ev.target.result);
-        setEditingAvatar(true);
-      };
-      reader.readAsDataURL(file);
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAvatarInput(ev.target.result);
+      setEditingAvatar(true);
+    };
+    reader.readAsDataURL(file);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -126,18 +155,19 @@ export default function ProfileView({ playerId, onBack }) {
           />
           <input 
             type="file" 
-            accept="image/*" 
+            accept="image/*,.heic,.heif" 
             ref={fileInputRef} 
             onChange={handleFileChange} 
             className="hidden" 
           />
           <button
             type="button"
+            disabled={processingImage}
             onClick={() => fileInputRef.current?.click()}
-            className="absolute -right-2 -top-2 bg-white/90 text-sm px-2 py-1 rounded-full shadow border cursor-pointer z-10"
+            className="absolute -right-2 -top-2 bg-white/90 text-sm px-2 py-1 rounded-full shadow border cursor-pointer z-10 disabled:opacity-70 disabled:cursor-wait"
             aria-label="Edit avatar"
           >
-            Edit
+            {processingImage ? 'Converting...' : 'Edit'}
           </button>
           <div className="absolute -bottom-1 -right-1 bg-primary text-white px-2.5 py-0.5 rounded-full text-[11px] font-bold border-2 border-white shadow">
             #{profile.rank}

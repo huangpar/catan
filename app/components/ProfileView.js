@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getPlayerProfile, getPlayersList, updatePlayerAvatar } from '../actions/gameActions';
 import PlayerAvatar from './PlayerAvatar';
 import DesktopPageHeader from './DesktopPageHeader';
@@ -42,6 +42,24 @@ export default function ProfileView({ playerId, onBack }) {
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [avatarInput, setAvatarInput] = useState('');
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (e.g., limit to 2MB) to prevent database overload
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setAvatarInput(ev.target.result);
+        setEditingAvatar(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
 
   const formatDate = (isoString) => {
@@ -106,12 +124,16 @@ export default function ProfileView({ playerId, onBack }) {
             size="lg"
             className="w-[100px] h-[100px] lg:w-[120px] lg:h-[120px] border-[3px] border-gold-light"
           />
+          <input 
+            type="file" 
+            accept="image/*" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+          />
           <button
             type="button"
-            onClick={() => {
-              setAvatarInput(profile.avatar_url || `https://images.dicebear.com/api/identicon/${encodeURIComponent(profile.name)}.svg`);
-              setEditingAvatar(true);
-            }}
+            onClick={() => fileInputRef.current?.click()}
             className="absolute -right-2 -top-2 bg-white/90 text-sm px-2 py-1 rounded-full shadow border cursor-pointer z-10"
             aria-label="Edit avatar"
           >
@@ -123,15 +145,12 @@ export default function ProfileView({ playerId, onBack }) {
         </div>
 
         {editingAvatar && (
-          <div className="w-full mt-2">
-            <label className="text-[12px] font-semibold">Avatar URL</label>
-            <div className="flex gap-2 mt-2">
-              <input
-                value={avatarInput}
-                onChange={(e) => setAvatarInput(e.target.value)}
-                className="flex-1 rounded-xl px-3 py-2 border border-outline-variant/30 bg-surface-container text-on-surface text-sm"
-                placeholder="https://..."
-              />
+          <div className="w-full mt-4 flex flex-col items-center">
+            <p className="text-[12px] font-semibold text-on-surface-variant mb-2">Save new avatar?</p>
+            {avatarInput && avatarInput.startsWith('data:image') && (
+              <img src={avatarInput} className="w-16 h-16 rounded-full mx-auto mb-3 object-cover border-2 shadow-sm border-outline-variant/30" alt="Preview" />
+            )}
+            <div className="flex justify-center gap-3">
               <button
                 type="button"
                 disabled={savingAvatar}
@@ -154,14 +173,17 @@ export default function ProfileView({ playerId, onBack }) {
                     setSavingAvatar(false);
                   }
                 }}
-                className="px-3 py-2 rounded-xl bg-primary text-white font-semibold"
+                className="px-4 py-2 rounded-xl bg-primary text-white font-semibold text-sm cursor-pointer tap-interaction hover:bg-primary-dark transition-colors"
               >
                 {savingAvatar ? 'Saving...' : 'Save'}
               </button>
               <button
                 type="button"
-                onClick={() => setEditingAvatar(false)}
-                className="px-3 py-2 rounded-xl border border-outline-variant/30 bg-surface-container text-on-surface font-semibold"
+                onClick={() => {
+                  setEditingAvatar(false);
+                  setAvatarInput('');
+                }}
+                className="px-4 py-2 rounded-xl border border-outline-variant/30 bg-surface-container text-on-surface font-semibold text-sm cursor-pointer tap-interaction hover:bg-surface-container-high transition-colors"
               >
                 Cancel
               </button>

@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import PlayerAvatar from './PlayerAvatar';
 import DesktopPageHeader from './DesktopPageHeader';
 import { useIsDesktop } from '../hooks/useIsDesktop';
 
-const MOBILE_PAGE_SIZE = 4;
-const DESKTOP_PAGE_SIZE = 9;
+const MOBILE_PAGE_SIZE = 9;
+const DESKTOP_PAGE_SIZE = 18;
 
 function formatDate(isoString) {
   try {
@@ -39,14 +39,113 @@ function matchAchievement(match, winnerId) {
   return { icon: 'psychology', label: 'Completed' };
 }
 
-function MatchCard({ match, onSelectPlayer }) {
+function MatchDetailsModal({ match, onClose, onSelectPlayer }) {
+  if (!match) return null;
+  const winner = match.participants.find((p) => p.isWinner);
+  const achievement = matchAchievement(match, winner?.id);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in" onClick={onClose}>
+      <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-md card-shadow relative" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface cursor-pointer tap-interaction">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+        
+        <h2 className="font-serif text-[24px] text-on-surface mb-1 pr-8">{match.gameName || 'Catan Match'}</h2>
+        <div className="flex items-center gap-2 mb-6">
+          <p className="text-sm text-on-surface-variant font-medium">{formatDate(match.playedAt)}</p>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant uppercase tracking-wide">
+            Game #{match.id}
+          </span>
+        </div>
+
+        {/* <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-surface-container rounded-xl p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Duration</p>
+            <p className="text-on-surface font-bold text-[18px]">{formatDuration(match.duration)}</p>
+          </div>
+          <div className="bg-surface-container rounded-xl p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Achievement</p>
+            <p className="text-on-surface font-bold text-[14px] flex items-center gap-1.5 truncate">
+              <span className="material-symbols-outlined text-[16px] text-gold">{achievement.icon}</span>
+              {achievement.label}
+            </p>
+          </div>
+        </div> */}
+
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-3">Participants</h3>
+        <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+          {match.participants.map(p => (
+            <button
+              key={p.id}
+              onClick={() => {
+                onSelectPlayer(p.id);
+                onClose();
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-surface-container transition-colors text-left cursor-pointer tap-interaction border border-transparent hover:border-outline-variant/30"
+            >
+              <div className="flex items-center gap-3">
+                <PlayerAvatar name={p.name} src={p.avatar} size="md" color={p.color} />
+                <div>
+                  <p className="font-semibold text-on-surface">{p.name}</p>
+                  <p className="text-[12px] text-on-surface-variant">{p.score != null ? `Score: ${p.score}` : 'No score'}</p>
+                </div>
+              </div>
+              {p.isWinner && (
+                <span className="material-symbols-outlined text-gold" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileMatchCard({ match, onClick }) {
+  const winner = match.participants.find((p) => p.isWinner);
+  const winnerColor = winner?.color || '#7C3AED';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(match)}
+      className="lg:hidden bg-surface-container-lowest rounded-2xl p-5 card-shadow relative overflow-hidden h-full flex flex-col items-center justify-center w-full text-center cursor-pointer tap-interaction hover:bg-surface-container/50 transition-colors group"
+      style={{ borderColor: winnerColor, borderWidth: '1px', borderStyle: 'solid' }}
+    >
+      <div className="absolute left-0 top-0 h-full w-1.5 rounded-r-full" style={{ backgroundColor: winnerColor, opacity: 0.12 }} />
+      <div className="absolute right-3 top-3 opacity-[0.04] pointer-events-none transition-transform group-hover:scale-110 group-hover:rotate-12 duration-500">
+        <span className="material-symbols-outlined text-[80px]">hexagon</span>
+      </div>
+
+      <div className="py-4 relative">
+        {winner ? (
+          <div className="flex flex-col items-center">
+            <PlayerAvatar name={winner.name} src={winner.avatar} size="lg" color={winner.color} />
+            <div>
+              {/* <p className="font-serif text-[20px] text-on-surface">{winner.name}</p> */}
+              {/* <p className="text-[10px] font-bold uppercase tracking-wider text-secondary mt-1 flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px] text-gold" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
+                Winner
+              </p> */}
+            </div>
+          </div>
+        ) : (
+          <div className="text-on-surface-variant text-sm font-medium">No winner recorded</div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function DesktopMatchCard({ match, onSelectPlayer }) {
   const winner = match.participants.find((p) => p.isWinner);
   const winnerColor = winner?.color || '#7C3AED';
   const achievement = matchAchievement(match, winner?.id);
 
   return (
     <article
-      className="bg-surface-container-lowest rounded-2xl p-4 lg:p-5 card-shadow relative overflow-hidden h-full flex flex-col"
+      className="hidden lg:flex bg-surface-container-lowest rounded-2xl p-4 lg:p-5 card-shadow relative overflow-hidden h-full flex-col"
       style={{ borderColor: winnerColor, borderWidth: '1px', borderStyle: 'solid' }}
     >
       <div className="absolute left-0 top-0 h-full w-1.5 rounded-r-full" style={{ backgroundColor: winnerColor, opacity: 0.12 }} />
@@ -72,18 +171,18 @@ function MatchCard({ match, onSelectPlayer }) {
         >
           <PlayerAvatar name={winner.name} src={winner.avatar} size="md" color={winner.color} />
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-0.5 flex items-center gap-2">
+            {/* <p className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-0.5 flex items-center gap-2">
               <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: winnerColor }} />
               Winner
-            </p>
+            </p> */}
             <p className="font-semibold text-[15px] text-on-surface truncate">{winner.name}</p>
           </div>
-          <span
+          {/* <span
             className="material-symbols-outlined text-gold text-[22px] shrink-0"
             style={{ fontVariationSettings: "'FILL' 1" }}
           >
             emoji_events
-          </span>
+          </span> */}
         </button>
       ) : (
         <div className="mb-4 p-3 rounded-xl bg-surface-container text-on-surface-variant text-sm relative">
@@ -119,10 +218,10 @@ function MatchCard({ match, onSelectPlayer }) {
             </button>
           ))}
         </div>
-        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-on-surface-variant">
+        {/* <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-on-surface-variant">
           <span className="material-symbols-outlined text-[16px] text-gold">{achievement.icon}</span>
           {achievement.label}
-        </span>
+        </span> */}
       </div>
     </article>
   );
@@ -170,6 +269,7 @@ export default function HistoryView({
 
   const [page, setPage] = useState(1);
   const [gameFilter, setGameFilter] = useState('all');
+  const [selectedMatch, setSelectedMatch] = useState(null);
 
   const gameOptions = useMemo(() => {
     const names = [...new Set(history.map((m) => m.gameName))];
@@ -258,13 +358,18 @@ export default function HistoryView({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
+        <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-5">
           {pageItems.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              onSelectPlayer={onSelectPlayer}
-            />
+            <Fragment key={match.id}>
+              <MobileMatchCard
+                match={match}
+                onClick={setSelectedMatch}
+              />
+              <DesktopMatchCard
+                match={match}
+                onSelectPlayer={onSelectPlayer}
+              />
+            </Fragment>
           ))}
         </div>
       )}
@@ -307,6 +412,12 @@ export default function HistoryView({
           </button>
         </div>
       )}
+
+      <MatchDetailsModal 
+        match={selectedMatch} 
+        onClose={() => setSelectedMatch(null)} 
+        onSelectPlayer={onSelectPlayer} 
+      />
     </div>
   );
 }
